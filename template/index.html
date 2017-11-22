@@ -5,13 +5,13 @@
         <th>Link</th>
     </thead>
     <tbody>
-        {{ range $index, $value := .news }}
+        {{ range $index, $value := .Links }}
             <tr>
                 <td>
                     {{ $index }}
                 </td>
                 <td>
-                    <a href="{{ $value }}">{{ $value }}</a>
+                    <a href="newsDetail">{{ $value }}</a>
                 </td>
             </tr>
         {{ end }}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <script type="text/javascript" src="//cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+        <link type="text/css" rel="//cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css"></link>
+        <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+        <script type="text/javascript">
+            $(document).ready(function(){
+                $('#myTable').DataTable();
+            });
+        </script>
+
+    </head>
+
+    <body>
+        <h1>{{ .Title }}</h1>
+        <table id="myTable">
+            <thead>
+                <th>Title</th>
+                <th>Link</th>
+                <th>Keywords</th>
+            </thead>
+            <tbody>
+                {{ range $key, $value := .News }}
+                    {{ range $index, $title := $value.N.Title }}
+                    <tr>
+                        <td>
+                            {{ $title }}
+                        </td>
+                        <td>
+                            <a href="{{ $value.N.URL[$index] }}">{{ $value.N.URL[$index] }}</a>
+                        </td>
+                        <td>
+                            {{ $value.N.Keywords[$index]}}
+                        </td>
+                    </tr>
+                    {{ end }}
+                {{ end }}
+            </tbody>
+        </table>
+    </body>
+</html>

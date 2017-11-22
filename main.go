@@ -19,13 +19,14 @@ type SitemapIndex struct {
 	Locations []string `xml:"sitemap>loc"`
 }
 
+
 func (s SitemapIndex) printSitemap() {
 	for _, loc := range s.Locations {
 		fmt.Println(loc)
 	}
 }
 
-// News is used as an aggregate for the each item from sitemap
+// News is used as an aggregation for holding items fetched from sitemap
 type News struct {
 	Title    []string `xml:"url>n:news>n:title"`
 	URL      []string `xml:"url>loc"`
@@ -53,13 +54,24 @@ func retrieveXML(url string) ([]byte, error) {
 	return bodyByte, err
 }
 
-type newsDetailPage struct {
+type indexPage struct {
 	Title string
 	Links []string
 }
 
+type newsDetailPage struct {
+	Title string
+	N News
+}
+
 var newsLink SitemapIndex
-var newsDetail = make(map[string]News)
+
+type NewsItem struct {
+	T	string
+	U	string
+	K 	string
+}
+var newsDetail = []NewsItem{}
 
 func fetchNews() {
 	url := "https://www.washingtonpost.com/news-sitemap-index.xml"
@@ -71,6 +83,7 @@ func fetchNews() {
 	// stringBody := string(bodyByte)
 
 	xml.Unmarshal(bodyByte, &newsLink)
+	log.Printf("The news link is %v", newsLink)
 
 	var n News
 	for _, u := range newsLink.Locations {
@@ -79,21 +92,31 @@ func fetchNews() {
 			log.Fatal(generateError(u, err))
 		}
 		xml.Unmarshal(bodyByte, &n)
-		newsDetail[u] = News{URL: n.URL, Keywords: n.Keywords, Title: n.Title}
+		newsDetail  = append(newsDetail, News{URL: n.URL, Keywords: n.Keywords, Title: n.Title})
 	}
 }
 
 func router() {
 	fetchNews()
 	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/newsDetail", newsDetailHandler)
 	http.ListenAndServe(":8000", nil)
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	// way to instantiate a struct object
-	data := newsDetailPage{Title: "Daily news from Washinton Post", Links: newsLink.Locations}
+	data := indexPage{Title: "Daily news from Washinton Post", Links: newsLink.Locations}
 	temp, err := template.ParseFiles("template/index.html")
 	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	temp.Execute(w, data)
+}
+
+func newsDetailHandler(w http.ResponseWriter, r *http.Request)  {
+	data := newsDetailPage{Title:"WashintonPost News", N: newsDetail}
+	temp, err := template.ParseFiles("template/newsDetail.html")
+	if  err!=nil {
 		log.Fatalf("%v", err)
 	}
 	temp.Execute(w, data)
