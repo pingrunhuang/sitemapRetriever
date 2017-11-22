@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/xml"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -52,8 +53,15 @@ func retrieveXML(url string) ([]byte, error) {
 	return bodyByte, err
 }
 
-func main() {
+type newsDetailPage struct {
+	Title string
+	Links []string
+}
 
+var newsLink SitemapIndex
+var newsDetail = make(map[string]News)
+
+func fetchNews() {
 	url := "https://www.washingtonpost.com/news-sitemap-index.xml"
 	bodyByte, err := retrieveXML(url)
 	if err != nil {
@@ -61,17 +69,36 @@ func main() {
 	}
 	// how to stringify the byte array data
 	// stringBody := string(bodyByte)
-	var s SitemapIndex
-	xml.Unmarshal(bodyByte, &s)
-	s.printSitemap()
+
+	xml.Unmarshal(bodyByte, &newsLink)
+
 	var n News
-	for _, u := range s.Locations {
+	for _, u := range newsLink.Locations {
 		bodyByte, err := retrieveXML(u)
 		if err != nil {
 			log.Fatal(generateError(u, err))
 		}
 		xml.Unmarshal(bodyByte, &n)
-		n.printNews()
+		newsDetail[u] = News{URL: n.URL, Keywords: n.Keywords, Title: n.Title}
 	}
+}
 
+func router() {
+	fetchNews()
+	http.HandleFunc("/", indexHandler)
+	http.ListenAndServe(":8000", nil)
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	// way to instantiate a struct object
+	data := newsDetailPage{Title: "Daily news from Washinton Post", Links: newsLink.Locations}
+	temp, err := template.ParseFiles("template/index.html")
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	temp.Execute(w, data)
+}
+
+func main() {
+	router()
 }
