@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 )
 
 var politicsXMLMocking = []byte(
@@ -153,6 +154,7 @@ var newsLink SitemapIndex
 var newsDetail = []News{}
 var newsDetailMock = []News{}
 
+// this method could be imporved with concurrency
 func fetchNews(isMocking bool) {
 	var n News
 	if isMocking {
@@ -170,10 +172,10 @@ func fetchNews(isMocking bool) {
 		xml.Unmarshal(bodyByte, &newsLink)
 		newsLink.printSitemap()
 
-		for _, u := range newsLink.Locations {
-			bodyByte, err := retrieveXML(u)
+		for _, newsURL := range newsLink.Locations {
+			bodyByte, err := retrieveXML(newsURL)
 			if err != nil {
-				log.Fatal(generateError(u, err))
+				log.Fatal(generateError(newsURL, err))
 			}
 			xml.Unmarshal(bodyByte, &n)
 			newsDetail = append(newsDetail, News{URLs: n.URLs, Keywords: n.Keywords, Titles: n.Titles})
@@ -181,8 +183,52 @@ func fetchNews(isMocking bool) {
 	}
 }
 
+// improvement of the previous method with concurrency
+var wg sync.WaitGroup
+
+func handlePanic() {
+	if r := recover(); r != nil {
+		log.Fatal("Panic being recovered: ", r)
+	}
+}
+func fetchNewsCon(isMocking bool) {
+
+	var n News
+	if isMocking {
+		xml.Unmarshal(politicsXMLMocking, &n)
+		newsDetailMock = append(newsDetailMock, News{URLs: n.URLs, Keywords: n.Keywords, Titles: n.Titles})
+	} else {
+		url := "https://www.washingtonpost.com/news-sitemap-index.xml"
+		bodyByte, err := retrieveXML(url)
+		if err != nil {
+			log.Fatalf("Error retrieving xml from sitemap %s, %v", url, err)
+		}
+		xml.Unmarshal(bodyByte, &newsLink)
+		newsChan := make(chan News, len(newsLink.Locations))
+		for _, newsLoc := range newsLink.Locations {
+			wg.Add(1)
+			go func(newsLoc string) {
+				defer wg.Done()
+				defer handlePanic()
+				bodyByte, err := retrieveXML(newsLoc)
+				if err != nil {
+					panic(fmt.Errorf("Error retrieving %s", newsLoc))
+				}
+				xml.Unmarshal(bodyByte, &n)
+				newsChan <- n
+			}(newsLoc)
+		}
+		wg.Wait()
+		close(newsChan)
+		for news := range newsChan {
+			newsDetail = append(newsDetail, news)
+		}
+	}
+}
+
 func router() {
-	fetchNews(false)
+	// fetchNews(false)
+	fetchNewsCon(false)
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/newsDetail", newsDetailHandler)
 	http.ListenAndServe(":8000", nil)
