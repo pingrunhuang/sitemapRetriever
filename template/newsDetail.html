@@ -1,42 +1,46 @@
 <!doctype html>
 <html lang="en">
     <head>
-        <script type="text/javascript" src="//cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
-        <link type="text/css" rel="//cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css"></link>
-        <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
-        <script type="text/javascript">
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">          
+        <script type="text/javascript" src="//code.jquery.com/jquery-1.12.4.js" charset="utf-8"></script>
+        <script type="text/javascript" src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+        <script type="text/javascript" class="init">
             $(document).ready(function(){
                 $('#myTable').DataTable();
             });
         </script>
-
     </head>
 
     <body>
-        <h1>{{ .Title }}</h1>
-        <table id="myTable">
-            <thead>
-                <th>Title</th>
-                <th>Link</th>
-                <th>Keywords</th>
-            </thead>
-            <tbody>
-                {{ range $key, $value := .News }}
-                    {{ range $index, $title := $value.N.Title }}
+        {{ range $xIndex, $news := .Details }}
+        <p>{{ $news }}</p>
+        {{ end }}
+        <table id="myTable" class="display" cellspacing="0" width="100%">
+                <thead>
                     <tr>
-                        <td>
-                            {{ $title }}
-                        </td>
-                        <td>
-                            <a href="{{ $value.N.URL[$index] }}">{{ $value.N.URL[$index] }}</a>
-                        </td>
-                        <td>
-                            {{ $value.N.Keywords[$index]}}
-                        </td>
-                    </tr>
+                        <th>Title</th>
+                        <th>Link</th>
+                        <th>Keywords</th>
+                    </tr>     
+                </thead>
+                <tbody>
+                    {{ range $xIndex, $news := .Details }}
+                        {{ range $yIndex, $title := $news.Titles }}
+                        <tr>
+                            <td>
+                                {{ $title }}
+                            </td>
+                            <td>
+                                <a href="{{ index $news.URLs $yIndex }}">{{ index $news.URLs $yIndex }}</a>
+                            </td>
+                            <td>
+                                {{ index  $news.Keywords $yIndex }}
+                            </td>
+                        </tr>
+                        {{ end }}
                     {{ end }}
-                {{ end }}
-            </tbody>
+                </tbody>
         </table>
     </body>
+    
 </html>
